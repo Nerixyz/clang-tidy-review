@@ -67,9 +67,11 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - run: apt update && \
-        DEBIAN_FRONTEND=noninteractive \
-        apt-get install -y --no-install-recommends\
+    - run: sudo apt-get update
+      shell: bash
+
+    - run: DEBIAN_FRONTEND=noninteractive \
+        sudo apt-get install -y --no-install-recommends\
         build-essential cmake git \
         tzdata \
         clang-tidy-11 \
