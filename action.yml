@@ -89,7 +89,7 @@ runs:
       working-directory: ${{ github.action_path }}
 
     - run: |
-        ./review.py \
+        ${{ github.action_path }}/review.py \
           --clang_tidy_binary=clang-tidy-${{ inputs.clang_tidy_version }} \
           --token=${{ inputs.token }} \
           --repo=${{ inputs.repo }} \
@@ -105,4 +105,4 @@ runs:
           --lgtm-comment-body='${{ inputs.lgtm_comment_body }}' \
           --split_workflow=${{ inputs.split_workflow }}
       shell: bash
-      working-directory: ${{ github.action_path }}
+      working-directory: ${{ github.workspace }}
