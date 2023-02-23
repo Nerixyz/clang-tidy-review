@@ -16,7 +16,7 @@ inputs:
   base_dir:
     description: 'Absolute path to initial working directory. Useful if generating `compile_commands.json` outside of the Action'
     default: ${{ github.workspace }}
-    require: false
+    required: false
   clang_tidy_version:
     description: 'Version of clang-tidy to use; one of 11, 12, 13, 14'
     default: '14'
@@ -56,29 +56,58 @@ inputs:
   split_workflow:
     description: "Only generate but don't post the review, leaving it for the second workflow. Relevant when receiving PRs from forks that don't have the required permissions to post reviews."
     required: false
-    default: false
+    default: 'false'
   pr:
     default: ${{ github.event.pull_request.number }}
+    description: 'The pull request associated with the current run (default: github.event.pull_request.number)'
   repo:
     default: ${{ github.repository }}
+    description: 'The repository this action runs in (default: github.repository)'
 outputs:
   total_comments:
     description: 'Total number of warnings from clang-tidy'
+    value: ${{ steps.final-review.outputs.total_comments }}
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  args:
-    - --clang_tidy_binary=clang-tidy-${{ inputs.clang_tidy_version }}
-    - --token=${{ inputs.token }}
-    - --repo=${{ inputs.repo }}
-    - --pr=${{ inputs.pr }}
-    - --build_dir=${{ inputs.build_dir }}
-    - --base_dir=${{ inputs.base_dir }}
-    - --clang_tidy_checks=${{ inputs.clang_tidy_checks }}
-    - --config_file=${{ inputs.config_file }}
-    - --include='${{ inputs.include }}'
-    - --exclude='${{ inputs.exclude }}'
-    - --apt-packages=${{ inputs.apt_packages }}
-    - --cmake-command='${{ inputs.cmake_command }}'
-    - --lgtm-comment-body='${{ inputs.lgtm_comment_body }}'
-    - --split_workflow=${{ inputs.split_workflow }}
+  using: "composite"
+  steps:
+    - run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential \
+          cmake \
+          git \
+          tzdata \
+          clang-tidy-11 \
+          clang-tidy-12 \
+          clang-tidy-13 \
+          clang-tidy-14 \
+          clang-tidy-15 \
+          python3 \
+          python3-pip
+      shell: bash
+
+    - run: |
+        pip3 install --upgrade pip
+        pip3 install -r requirements.txt
+      shell: bash
+      working-directory: ${{ github.action_path }}
+
+    - id: final-review
+      run: |
+        ${{ github.action_path }}/review.py \
+          --clang_tidy_binary=clang-tidy-${{ inputs.clang_tidy_version }} \
+          --token=${{ inputs.token }} \
+          --repo=${{ inputs.repo }} \
+          --pr=${{ inputs.pr }} \
+          --build_dir=${{ inputs.build_dir }} \
+          --base_dir=${{ inputs.base_dir }} \
+          --clang_tidy_checks=${{ inputs.clang_tidy_checks }} \
+          --config_file=${{ inputs.config_file }} \
+          --include='${{ inputs.include }}' \
+          --exclude='${{ inputs.exclude }}' \
+          --apt-packages=${{ inputs.apt_packages }} \
+          --cmake-command='${{ inputs.cmake_command }}' \
+          --lgtm-comment-body='${{ inputs.lgtm_comment_body }}' \
+          --split_workflow=${{ inputs.split_workflow }}
+      shell: bash
+      working-directory: ${{ github.workspace }}
