@@ -82,25 +82,27 @@ runs:
           python3-pip
       shell: bash
 
-    - run: pip3 install --upgrade pip && \
+    - run: |
+        pip3 install --upgrade pip
         pip3 install -r requirements.txt
       shell: bash
       working-directory: ${{ github.action_path }}
 
-    - run: ./review.py \
-        --clang_tidy_binary=clang-tidy-${{ inputs.clang_tidy_version }} \
-        --token=${{ inputs.token }} \
-        --repo=${{ inputs.repo }} \
-        --pr=${{ inputs.pr }} \
-        --build_dir=${{ inputs.build_dir }} \
-        --base_dir=${{ inputs.base_dir }} \
-        --clang_tidy_checks=${{ inputs.clang_tidy_checks }} \
-        --config_file=${{ inputs.config_file }} \
-        --include='${{ inputs.include }}' \
-        --exclude='${{ inputs.exclude }}' \
-        --apt-packages=${{ inputs.apt_packages }} \
-        --cmake-command='${{ inputs.cmake_command }}' \
-        --lgtm-comment-body='${{ inputs.lgtm_comment_body }}' \
-        --split_workflow=${{ inputs.split_workflow }}
+    - run: |
+        ./review.py \
+          --clang_tidy_binary=clang-tidy-${{ inputs.clang_tidy_version }} \
+          --token=${{ inputs.token }} \
+          --repo=${{ inputs.repo }} \
+          --pr=${{ inputs.pr }} \
+          --build_dir=${{ inputs.build_dir }} \
+          --base_dir=${{ inputs.base_dir }} \
+          --clang_tidy_checks=${{ inputs.clang_tidy_checks }} \
+          --config_file=${{ inputs.config_file }} \
+          --include='${{ inputs.include }}' \
+          --exclude='${{ inputs.exclude }}' \
+          --apt-packages=${{ inputs.apt_packages }} \
+          --cmake-command='${{ inputs.cmake_command }}' \
+          --lgtm-comment-body='${{ inputs.lgtm_comment_body }}' \
+          --split_workflow=${{ inputs.split_workflow }}
       shell: bash
       working-directory: ${{ github.action_path }}
