@@ -53,6 +53,12 @@ def main():
         type=bool_argument,
         default=False,
     )
+    parser.add_argument(
+        "--allow-missing",
+        help="Don't throw if the review artifact wasn't found",
+        type=bool_argument,
+        default=False,
+    )
 
     args = parser.parse_args()
 
@@ -68,6 +74,8 @@ def main():
         metadata, review = download_artifacts(pull_request, int(args.workflow_id))
 
     if metadata is None:
+        if args.allow_missing:
+            return
         raise RuntimeError("Couldn't find review metadata")
 
     pull_request.pr_number = metadata["pr_number"]
