@@ -108,6 +108,9 @@ class HashableComment:
             return self.body < other.body
         return id(self) < id(other)
 
+    def __repr__(self) -> str:
+        return f"body={self.body}, line={self.line}, path={self.path}, side={self.side}"
+
 
 def add_auth_arguments(parser: argparse.ArgumentParser):
     # Token
@@ -1254,9 +1257,14 @@ def cull_comments(pull_request: PullRequest, review, max_comments):
     """
 
     unposted_comments = set(map(lambda c: HashableComment(**c), review["comments"]))
-    posted_comments = set(
-        map(lambda c: HashableComment(**c), pull_request.get_pr_comments())
-    )
+    print("unposted comments")
+    print(unposted_comments)
+    my_comments = [it for it in pull_request.get_pr_comments()]
+    print("my comments")
+    print(my_comments)
+    posted_comments = set(map(lambda c: HashableComment(**c), my_comments))
+    print("posted comments")
+    print(posted_comments)
 
     review["comments"] = [
         c.__dict__ for c in sorted(unposted_comments - posted_comments)
