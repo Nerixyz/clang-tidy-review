@@ -242,7 +242,7 @@ def build_clang_tidy_warnings(
         with lock:
             subprocess.list2cmdline(invocation)
             sys.stdout.write(
-                f'{name}: {subprocess.list2cmdline(invocation)}\n{output.decode("utf-8")}'
+                f"{name}: {subprocess.list2cmdline(invocation)}\n{output.decode('utf-8')}"
             )
             if len(err) > 0:
                 sys.stdout.flush()
@@ -465,7 +465,7 @@ def make_file_offset_lookup(filenames: list[str]) -> OffsetLookup:
         # Length of each line
         line_lengths = map(len, lines)
         # Cumulative sum of line lengths => offset at end of each line
-        lookup[Path(filename).resolve().as_posix()] = [
+        lookup[str(Path(filename).resolve())] = [
             0,
             *list(itertools.accumulate(line_lengths)),
         ]
@@ -556,7 +556,7 @@ def collate_replacement_sets(
         # from the FilePath and we'll end up looking for a path that's not in
         # the lookup dict
         # To fix this, we'll convert all the FilePaths to absolute paths
-        replacement["FilePath"] = Path(replacement["FilePath"]).resolve().as_posix()
+        replacement["FilePath"] = str(Path(replacement["FilePath"]).resolve())
 
         # It's possible the replacement is needed in another file?
         # Not really sure how that could come about, but let's
@@ -693,7 +693,7 @@ def format_diff_line(
             new_line = whitespace.join([f"+ {line}" for line in new_line.splitlines()])
             old_line = whitespace.join([f"- {line}" for line in old_line.splitlines()])
 
-            rel_path = try_relative(replacement_set[0]["FilePath"]).as_posix()
+            rel_path = str(try_relative(replacement_set[0]["FilePath"]))
             code_blocks += textwrap.dedent(f"""\
 
                 {rel_path}:{replacement_line_num}:
@@ -729,12 +729,26 @@ def fix_absolute_paths(build_compile_commands: str, base_dir: str) -> None:
     # We might need to change some absolute paths if we're inside
     # a docker container
     with Path(build_compile_commands).open() as f:
-        compile_commands = json.load(f)
+        compile_commands = f.read()
 
-    print(f"Replacing '{basedir}' with '{newbasedir}'", flush=True)
+    if os.name == "nt":
+        # Paths on Windows can use both forward and backward slashes.
+        # The paths in a compilation database can contain both (depending on the tool that generated it).
+        # We're matching both with the built regex.
+        # For example "C:/my/dir" gets turned into "C:[\\/]+my[\\/]+dir".
+        dirsep_re = re.compile(r"[\\/]+")
+        basedir_str = str(basedir)
+        regex_str = r"[\\/]+".join(map(re.escape, re.split(dirsep_re, basedir_str)))
+    else:
+        # On unix, there's only a forwards slash.
+        regex_str = re.escape(str(basedir))
+    regex = re.compile(regex_str)
 
-    modified_compile_commands = json.dumps(compile_commands).replace(
-        str(basedir), str(newbasedir)
+    replacement = json.dumps(str(newbasedir))[1:-1]
+    print(f"Replacing r'{regex_str}' with '{replacement}'", flush=True)
+
+    modified_compile_commands = re.sub(
+        regex, replacement.replace("\\", r"\\"), compile_commands
     )
 
     with Path(build_compile_commands).open("w") as f:
@@ -863,9 +877,7 @@ def create_review_file(
             notes=diagnostic.get("Notes", []),
         )
 
-        rel_path = try_relative(
-            get_diagnostic_file_path(diagnostic, build_dir)
-        ).as_posix()
+        rel_path = str(try_relative(get_diagnostic_file_path(diagnostic, build_dir)))
         # diff lines are 1-indexed
         source_line = 1 + find_line_number_from_offset(
             offset_lookup,

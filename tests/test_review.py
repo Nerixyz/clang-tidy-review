@@ -178,17 +178,20 @@ def test_try_relative():
     assert path == pathlib.Path("..")
 
     path = ctr.try_relative("/fake/path")
-    assert path == pathlib.Path("/fake/path")
+    assert path == pathlib.Path("/fake/path").resolve()
 
 
 def test_fix_absolute_paths(tmp_path):
-    compile_commands = """
+    fake_path = (
+        "A:\\fake\\path\\to\\project" if os.name == "nt" else "/fake/path/to/project"
+    )
+    compile_commands = f"""
 [
-{
-  "directory": "/fake/path/to/project/build",
-  "command": "/usr/bin/c++    -o CMakeFiles/hello.dir/src/hello.cxx.o -c /fake/path/to/project/src/hello.cxx",
-  "file": "/fake/path/to/project/src/hello.cxx"
-}
+{{
+  "directory": "{fake_path}/build",
+  "command": "/usr/bin/c++    -o CMakeFiles/hello.dir/src/hello.cxx.o -c {fake_path}/src/hello.cxx",
+  "file": "{fake_path}/src/hello.cxx"
+}}
 ]
     """
 
@@ -196,15 +199,15 @@ def test_fix_absolute_paths(tmp_path):
     with open(compile_commands_path, "w") as f:
         f.write(compile_commands)
 
-    ctr.fix_absolute_paths(compile_commands_path, "/fake/path/to/project")
+    ctr.fix_absolute_paths(compile_commands_path, fake_path)
 
     with open(compile_commands_path, "r") as f:
         contents = json.load(f)[0]
 
     here = pathlib.Path.cwd()
-    assert contents["directory"] == str(here / "build")
-    assert contents["command"].split()[-1] == str(here / "src/hello.cxx")
-    assert contents["file"] == str(here / "src/hello.cxx")
+    assert Path(contents["directory"]) == here / "build"
+    assert Path(contents["command"].split()[-1]) == here / "src/hello.cxx"
+    assert Path(contents["file"]) == here / "src/hello.cxx"
 
 
 def test_save_load_metadata(tmp_path, monkeypatch):
@@ -252,14 +255,22 @@ def test_filter_files():
 def test_line_ranges():
     line_ranges = ctr.get_line_ranges(TEST_DIFF, ["src/hello.cxx"], False)
 
-    expected_line_ranges = '[{"name":"src/hello.cxx","lines":[[5,16]]}]'
+    expected_line_ranges = (
+        '[{"name":"src/hello.cxx","lines":[[5,16]]},{"name":"src\\\\hello.cxx","lines":[[5,16]]}]'
+        if os.path.sep == "\\"
+        else '[{"name":"src/hello.cxx","lines":[[5,16]]}]'
+    )
     assert line_ranges == expected_line_ranges
 
 
 def test_line_ranges_with_context_lines():
     line_ranges = ctr.get_line_ranges(TEST_DIFF, ["src/hello.cxx"], True)
 
-    expected_line_ranges = '[{"name":"src/hello.cxx","lines":[[2,19]]}]'
+    expected_line_ranges = (
+        '[{"name":"src/hello.cxx","lines":[[2,19]]},{"name":"src\\\\hello.cxx","lines":[[2,19]]}]'
+        if os.path.sep == "\\"
+        else '[{"name":"src/hello.cxx","lines":[[2,19]]}]'
+    )
     assert line_ranges == expected_line_ranges
 
 

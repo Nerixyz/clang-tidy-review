@@ -24,6 +24,10 @@ jobs:
       fail-fast: false
 
     steps:
+    - name: Disable auto CR/LF in Git
+      run: git config --global core.autocrlf false
+      if: runner.os == 'Windows'
+
     - uses: actions/checkout@v3
     - name: Set up Python
       uses: actions/setup-python@v4
